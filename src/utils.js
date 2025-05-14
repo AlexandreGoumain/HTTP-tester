@@ -11,6 +11,10 @@ const displayUsers = (customUsers = users) => {
             (user) =>
                 `<div style="margin-bottom: 10px;">
                     <a href="/user?email=${user.email}">${user.nom}</a>
+                    <form method="POST" action="/update" style="display: inline-block; margin-left: 10px;">
+                        <input type="hidden" name="email" value="${user.email}">
+                        <button type="submit">Mettre à jour</button>
+                    </form>
                     <form method="POST" action="/delete" style="display: inline-block; margin-left: 10px;">
                         <input type="hidden" name="email" value="${user.email}">
                         <button type="submit">Supprimer</button>
@@ -58,6 +62,40 @@ const form = () => {
     `;
 };
 
+const updateForm = (user) => {
+    if (!user) {
+        return "<p>User not found</p>";
+    }
+
+    return `
+        <form action="/saveupdate" method="post">
+            <input type="hidden" name="originalEmail" value="${user.email}">
+            <label for="name">Nom :</label>
+            <input type="text" id="name" name="name" value="${
+                user.nom
+            }" required>
+            <label for="email">Email :</label>
+            <input type="email" id="email" name="email" value="${
+                user.email
+            }" required>
+            <label for="role">Rôle :</label>
+            <select id="role" name="role" defaultValue="utilisateur">
+                <option value="admin" ${
+                    user.role === "admin" ? "selected" : ""
+                }>Admin</option>
+                <option value="modérateur" ${
+                    user.role === "modérateur" ? "selected" : ""
+                }>Modérateur</option>
+                <option value="utilisateur" ${
+                    user.role === "utilisateur" ? "selected" : ""
+                }>Utilisateur</option>
+            </select>
+            <button type="submit">Sauvegarder</button>
+        </form>
+        <a href="/users">Annuler</a>
+    `;
+};
+
 const navbar = () => {
     return `
         <nav style="display: flex; gap: 10px;">
@@ -66,4 +104,13 @@ const navbar = () => {
         </nav>
     `;
 };
-export { deleteUser, displayUser, displayUsers, form, navbar, shuffleUsers };
+
+export {
+    deleteUser,
+    displayUser,
+    displayUsers,
+    form,
+    navbar,
+    shuffleUsers,
+    updateForm,
+};

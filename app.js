@@ -3,7 +3,13 @@ import http from "http";
 import querystring from "querystring";
 import url from "url";
 import usersData from "./src/ressources.js";
-import { displayUser, displayUsers, form, navbar } from "./src/utils.js";
+import {
+    displayUser,
+    displayUsers,
+    form,
+    navbar,
+    updateForm,
+} from "./src/utils.js";
 
 let users = [...usersData];
 
@@ -63,6 +69,70 @@ const server = http.createServer((req, res) => {
 
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ message: dataObject }));
+        });
+
+        return;
+    }
+
+    if (path === "update" && req.method === "POST") {
+        let body = "";
+
+        req.on("data", (data) => {
+            body += data;
+        });
+
+        req.on("end", () => {
+            const dataObject = querystring.parse(body);
+            const userEmail = dataObject.email;
+
+            const user = users.find((u) => u.email === userEmail);
+
+            if (!user) {
+                res.writeHead(404, { "Content-Type": "application/json" });
+                res.end(JSON.stringify({ message: "Utilisateur non trouvé" }));
+                return;
+            }
+
+            res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+            res.end(`
+                ${navbar()}
+                <h1>Mettre à jour l'utilisateur :</h1>
+                ${updateForm(user)}
+            `);
+        });
+
+        return;
+    }
+
+    if (path === "saveupdate" && req.method === "POST") {
+        let body = "";
+
+        req.on("data", (data) => {
+            body += data;
+        });
+
+        req.on("end", () => {
+            const dataObject = querystring.parse(body);
+            const originalEmail = dataObject.originalEmail;
+
+            const userIndex = users.findIndex((u) => u.email === originalEmail);
+
+            if (userIndex === -1) {
+                res.writeHead(404, { "Content-Type": "application/json" });
+                res.end(JSON.stringify({ message: "Utilisateur non trouvé" }));
+                return;
+            }
+
+            users[userIndex] = {
+                nom: dataObject.name,
+                email: dataObject.email,
+                role: dataObject.role,
+            };
+
+            fs.writeFileSync("users.json", JSON.stringify(users, null, 2));
+
+            res.writeHead(302, { Location: "/users" });
+            res.end();
         });
 
         return;
