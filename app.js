@@ -1,27 +1,123 @@
+import fs from "fs";
 import http from "http";
-import { displayUsers, shuffleUsers } from "./src/utils.js";
-const server = http.createServer((req, res) => {
-    const url = req.url.replace("/", "");
+import querystring from "querystring";
+import url from "url";
+import usersData from "./src/ressources.js";
+import { displayUser, displayUsers, form, navbar } from "./src/utils.js";
 
-    if (url === "favicon.ico") {
-        res.writeHead(200, { "Content-Type": "image/x-icon" });
-        res.end();
+let users = [...usersData];
+
+try {
+    if (fs.existsSync("users.json")) {
+        const savedUsers = JSON.parse(fs.readFileSync("users.json", "utf8"));
+        users = savedUsers;
+    }
+} catch (error) {
+    console.error("Error loading users from file:", error);
+}
+
+const server = http.createServer((req, res) => {
+    const parsedUrl = url.parse(req.url, true);
+    const path = parsedUrl.pathname.replace("/", "");
+    const query = parsedUrl.query;
+
+    if (path === "form" && req.method === "GET") {
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        res.end(`
+            ${navbar()}
+            <h1>Formulaire :</h1>
+            ${form()}
+        `);
         return;
     }
 
-    if (url === "shuffle") {
+    if (path === "form" && req.method === "POST") {
+        let body = "";
+
+        req.on("data", (data) => {
+            body += data;
+        });
+
+        req.on("end", () => {
+            const dataObject = querystring.parse(body);
+
+            if (
+                (!dataObject.name || dataObject.name.trim() === "") &&
+                (!dataObject.role || dataObject.role.trim() === "") &&
+                (!dataObject.email || dataObject.email.trim() === "")
+            ) {
+                res.writeHead(400, { "Content-Type": "application/json" });
+                res.end(
+                    JSON.stringify({ message: "Tous les champs sont requis" })
+                );
+                return;
+            }
+
+            users.push({
+                nom: dataObject.name,
+                email: dataObject.email,
+                role: dataObject.role,
+            });
+
+            fs.writeFileSync("users.json", JSON.stringify(users, null, 2));
+
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ message: dataObject }));
+        });
+
+        return;
+    }
+
+    if (path === "delete" && req.method === "POST") {
+        let body = "";
+
+        req.on("data", (data) => {
+            body += data;
+        });
+
+        req.on("end", () => {
+            const dataObject = querystring.parse(body);
+            const userEmail = dataObject.email;
+
+            users = users.filter((u) => u.email !== userEmail);
+
+            fs.writeFileSync("users.json", JSON.stringify(users, null, 2));
+
+            res.writeHead(302, { Location: "/users" });
+            res.end();
+        });
+
+        return;
+    }
+
+    if (path === "user" && req.method === "GET") {
+        const userEmail = query.email;
+        const user = users.find((u) => u.email === userEmail);
+
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
         res.end(`
-            <h1>Users mélangés :</h1>
-            ${shuffleUsers()}
+            ${navbar()}
+            <h1>Detail de l'utilisateur :</h1>
+            ${displayUser(user)}
+        `);
+        return;
+    }
+
+    if (path === "users" && req.method === "GET") {
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        res.end(`
+            ${navbar()}
+            <h1>Liste des Users :</h1>
+            ${displayUsers(users)}
         `);
         return;
     }
 
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     res.end(`
+        ${navbar()}
         <h1>Liste des Users :</h1>
-        ${displayUsers()}
+        ${displayUsers(users)}
     `);
     return;
 });
